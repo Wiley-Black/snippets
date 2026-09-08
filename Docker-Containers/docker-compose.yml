@@ -1,19 +1,15 @@
 services:
-  ubuntu:
-    # The following works.  Although it uses xfce4 instead of gnome,
-    # I was able to switch the terminal to gnome-terminal and install chrome.
-    build: H:\Docker\ubuntu24-xfce4-nvm24-rdp
+  ubuntu:    
+    build: ubuntu24-xfce4-nvm24-rdp
     image: ubuntu24-xfce4-nvm24-rdp:latest
     
-    # Couldn't get this one (Gnome-based) quite working...
-    #build: H:\Docker\ubuntu24-gnome-nvm24-rdp    
-    #image: ubuntu24-gnome-nvm24-rdp:latest       
-    
+    # Make some storage from outside of the container available within the container.
+    # Changes made here from inside the container will persist beyond the container lifetime.
     volumes:
       - type: bind
         source: H:\
         target: /mnt/h
-        
+
     # Connect using Remote Desktop to localhost:3390.
     ports:
       - "3390:3389"
