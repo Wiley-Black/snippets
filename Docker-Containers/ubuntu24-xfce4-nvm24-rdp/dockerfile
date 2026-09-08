@@ -1,0 +1,299 @@
+# syntax=docker/dockerfile:1
+FROM ubuntu:24.04
+
+# Setup a default non-root user.  You can add a set-login.bat script that run.bat will 
+# use to provide these.
+ARG USER=developer
+ARG PASS=yourpwd
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+#### Installations ####
+
+# Setup some basic packages that are sometimes needed to get to other packages and useful
+# in writing Dockerfiles...
+RUN apt-get update && \
+	apt-get install -y --no-install-recommends \
+	software-properties-common \
+	gnupg2 \
+	keychain \
+	ca-certificates \
+	dos2unix && \
+	apt-get clean
+
+# Add Python repository...
+RUN add-apt-repository ppa:deadsnakes/ppa -y && apt-get update
+
+# Install some basic utilities and Python
+RUN apt-get install -y --no-install-recommends \
+    curl \
+    git \
+	sudo \
+	nano \
+    wget \
+    python3 \
+    python3-pip \
+	python3-dev \
+	python3-venv && \		
+	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+	
+# Install desktop environment and other system tools
+RUN apt-get update && apt-get -y install --no-install-recommends \
+    xorg \
+    xfce4 \
+    supervisor \
+    vim \
+    openssh-server \
+    xubuntu-desktop \
+    xubuntu-artwork \
+    xubuntu-default-settings \
+    xserver-xorg-video-all \
+    xserver-xorg-video-dummy \
+    xfonts-cyrillic \
+    xfonts-100dpi \
+    xfonts-75dpi \
+	fonts-liberation \
+    mesa-utils \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-render-util0 \
+    xsel \
+    mesa-utils-extra \
+    xfonts-scalable \
+    xorgxrdp \
+    dbus-x11 \
+    kmod \
+    rsync \
+    build-essential \
+    pkg-config \
+    procps \
+    xfce4-appmenu-plugin \
+    xfce4-datetime-plugin \
+    xfce4-goodies \
+    xfce4-terminal \
+    xfce4-taskmanager \
+    desktop-file-utils \
+    fonts-dejavu \
+    less \
+    multitail \
+    fonts-noto \
+    fonts-noto-color-emoji \
+    fonts-ubuntu \
+    menu \
+    menu-xdg \
+    net-tools \
+    xdg-utils \
+    xfonts-base \
+    xinput \
+    xutils \
+    xz-utils \
+    zenity \
+    zip \
+    bash \
+    bash-completion \
+    binutils \
+    file \
+    iputils-ping \
+    pavucontrol \
+    pciutils \
+    psmisc \
+    fakeroot \
+    fuse \
+    xfonts-base \
+    xterm \
+    gpg-agent && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Install gnome-terminal
+RUN apt-get update && apt-get -y install --no-install-recommends \
+	gnome-terminal && \
+	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Install xrdp
+RUN apt-get update && apt-get -y install --no-install-recommends \
+	xrdp && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Install firefox and get rid of snapd
+RUN add-apt-repository -y ppa:mozillateam/ppa && \
+    apt-get -y update && \
+    apt-get -y upgrade && \
+    apt-get -y purge snapd ;\
+    apt-get -y install firefox-esr && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Install Chrome
+#RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    #apt-get install -y --no-install-recommends ./google-chrome-stable_current_amd64.deb && \
+    #rm google-chrome-stable_current_amd64.deb && \
+	#apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Install other development packages
+RUN apt-get update && apt-get -y install --no-install-recommends \
+	libvips	&& \
+	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Install VS Code 
+RUN apt-get update && apt-get -y install --no-install-recommends \
+	build-essential \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libgtk-3-0 \
+    libgbm1 \
+	apt-transport-https \	
+	gpg && \
+	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb		
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && \
+	install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg && \
+	sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list' && \
+	apt-get update && apt-get install -y --no-install-recommends code && \
+	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Upgrade everything
+RUN apt-get upgrade -y --no-install-recommends && \
+	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+#### Remote Desktop Protocol (RDP) / xrdp / XFCE4 Configuration ####
+
+## XRDP Config
+RUN printf '%s\n' 'session required pam_env.so readenv=1' >> /etc/pam.d/xrdp-sesman
+# send xrdp services output to stdout
+RUN ln -sf /dev/stdout /var/log/xrdp.log
+RUN ln -sf /dev/stdout /var/log/xrdp-sesman.log
+# Disable forking, new cursors and enable high tls ciphers for xrdp
+RUN sed -i "\
+  s/fork=true/fork=false/g; \
+  s/\#tls_ciphers=HIGH/tls_ciphers=HIGH/g; \
+  s/^new_cursors=true/new_cursors=false/g \
+" /etc/xrdp/xrdp.ini
+
+# Disable root login and syslog logging for xrdp-sesman
+RUN sed -i "\
+  s/AllowRootLogin=true/AllowRootLogin=false/g; \
+  s/EnableSyslog=1/EnableSyslog=0/g \
+" /etc/xrdp/sesman.ini
+
+# Allow all users to start xserver
+#RUN sed -i 's/allowed_users=console/allowed_users=anybody/g' /etc/xrdp/Xwrapper.config
+RUN echo 'allowed_users=anybody' > /etc/X11/Xwrapper.config
+RUN chmod g+w /etc/xrdp
+RUN chmod u+s /usr/sbin/xrdp-sesman
+RUN chmod u+s /usr/sbin/xrdp
+
+# Add xrdp user to ssl-cert to allow access to cert files generated by system
+RUN usermod -a -G ssl-cert xrdp
+
+# Set some variables in the 'etc/skel' path, which becomes each user's home directory when their 
+# profile is created (later in this script).
+RUN echo 'export XDG_SESSION_DESKTOP=xubuntu' >> /etc/skel/.xsessionrc && \
+	echo 'export XDG_DATA_DIRS=/usr/share/xfce4:/usr/share/xubuntu:/usr/local/share:/usr/share:/var/lib/snapd/desktop:/usr/share' >> /etc/skel/.xsessionrc && \
+	echo 'export XDG_CONFIG_DIRS=/etc/xdg/xdg-xubuntu:/etc/xdg:/etc/xdg' >> /etc/skel/.xsessionrc
+
+#### System Configuration ####
+
+# The Dockerfile's executable will be supervisord, a Python program that launches other 
+# programs, allows them to keep running, and shows the output from them in the Docker 
+# terminal.  Supervisord will use this configuration script to know what programs to
+# launch.
+COPY system-configuration/supervisor.conf /etc/supervisor/conf.d/
+RUN dos2unix /etc/supervisor/conf.d/
+
+# Expose container's xrdp port
+EXPOSE 3389
+
+# DBus config
+RUN mkdir -p /var/run/dbus
+RUN chown messagebus:messagebus /var/run/dbus
+RUN dbus-uuidgen > /var/lib/dbus/machine-id
+
+#### System Configuration - Preferences ####
+
+# Disable light-locker (screen saver)
+RUN ln -s /usr/bin/true /usr/bin/light-locker
+
+# Add symbolic link /mount -> /mnt
+RUN ln -s /mnt /mount
+
+# Set terminal preference from the xfce4 default to gnome-terminal 
+RUN update-alternatives --set x-terminal-emulator /usr/bin/gnome-terminal.wrapper
+RUN mkdir -p /etc/skel/.config/xfce4
+RUN echo 'TerminalEmulator=gnome-terminal' >> /etc/skel/.config/xfce4/helpers.rc
+RUN echo 'WebBrowser=google-chrome' >> /etc/skel/.config/xfce4/helpers.rc
+
+#### Developer Tools - Systemwide ####
+
+# Download and install nvm for JS Node
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.7/install.sh | bash
+
+# Install JS Node 24
+RUN export NVM_DIR="$HOME/.nvm" \
+    && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" \
+    && [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" \
+    && nvm install 24 \
+    && ln -s $(which node) /usr/bin/node \
+    && ln -s $(which npm) /usr/bin/npm
+
+# Install yarn
+RUN npm install -g yarn
+
+#### Establish a non-root user account ####
+#### Any files written into /etc/skel form the new user home directory at this step.
+
+RUN groupadd -r appgroup && useradd -r -g appgroup -m -d /home/$USER $USER
+RUN echo "$USER:$PASS" | chpasswd
+
+# Allow $USER to be sudo to install any new packages
+RUN usermod -a -G sudo $USER
+
+#### User Preferences ####
+
+# Set default shell
+RUN usermod -s /bin/bash $USER
+
+# Scale global UI up by factor
+RUN mkdir -p /home/$USER/.config/xfce4/xfconf/xfce-perchannel-xml && \
+	echo '<property name="Gdk" type="empty">' >> /home/$USER/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml && \
+	echo '  <property name="WindowScalingFactor" type="int" value="2"/>' >> /home/$USER/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml && \
+	echo '</property>' >> /home/$USER/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml
+
+# Setup a login-script.sh to run upon connection.
+COPY system-configuration/login-script.sh /home/$USER/
+RUN dos2unix /home/$USER/login-script.sh
+RUN chmod +x /home/$USER/login-script.sh
+RUN chown -Rf $USER /home/$USER/login-script.sh
+RUN mkdir -p /home/$USER/.config/autostart
+RUN chown -Rf $USER /home/$USER/.config/autostart/
+RUN echo '[Desktop Entry]' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'Version=1.0' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'Type=Application' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'Name=Login script' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'Comment=Runs when XFCE session starts' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo "Exec=/bin/bash -c /home/$USER/login-script.sh" >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'OnlyShowIn=XFCE;' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'Terminal=false' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'StartupNotify=false' >>/home/$USER/.config/autostart/login-script.desktop && \
+	echo 'Hidden=false' >>/home/$USER/.config/autostart/login-script.desktop
+RUN chown -Rf $USER /home/$USER/.config/autostart/login-script.desktop
+
+# Add desktop background
+# Copy the image only if the system-configuration/background.png file exists by 
+# including a wildcard in the COPY command source filename.
+COPY system-configuration/backgroun[d].png /usr/share/xfce4/backdrops/
+# The login script also sets the desktop background to the provided file or a default.
+
+# Add bookmarks to Thunar, the default file browser for XFCE4
+RUN mkdir -p /home/$USER/.config/gtk-3.0 && \
+	echo 'file:///mount/h DriveH' >> /home/$USER/.config/gtk-3.0/bookmarks
+
+#### Launch Process (Supervisor) ####
+
+# Command-line arguments sent to "docker run" would replace the CMD part (in case you need to do an interactive
+# shell to troubleshoot).
+CMD [ "/usr/bin/supervisord", "-n" ]
+
+
