@@ -72,6 +72,7 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
     build-essential \
     pkg-config \
     procps \
+	appmenu-gtk3-module \
     xfce4-appmenu-plugin \
     xfce4-datetime-plugin \
     xfce4-goodies \
@@ -297,6 +298,14 @@ RUN echo '[Desktop Entry]' >>/home/$USER/.config/autostart/login-script.desktop 
 	echo 'StartupNotify=false' >>/home/$USER/.config/autostart/login-script.desktop && \
 	echo 'Hidden=false' >>/home/$USER/.config/autostart/login-script.desktop
 RUN chown -Rf $USER /home/$USER/.config/autostart/login-script.desktop
+
+# If the file system-configuration/login-script-more.sh exists, copy it in.
+# This file can be customized and isn't part of the git repo.
+#COPY system-configuration/login-script-mor[e].sh /home/$USER/
+RUN if [ -f "home/$USER/login-script-more.sh" ]; then \
+		dos2unix /home/$USER/login-script-more.sh && \
+		chown -Rf $USER /home/$USER/login-script-more.sh; \
+	fi
 
 # Add desktop background
 # Copy the image only if the system-configuration/background.png file exists by 
