@@ -1,7 +1,7 @@
 services:
   ubuntu:    
-    build: ubuntu24-xfce4-nvm24-rdp
-    image: ubuntu24-xfce4-nvm24-rdp:latest
+    build: mine
+    image: mine:latest
     
     # Make some storage from outside of the container available within the container.
     # Changes made here from inside the container will persist beyond the container lifetime.
