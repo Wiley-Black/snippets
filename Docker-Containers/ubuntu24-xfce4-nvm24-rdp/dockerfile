@@ -9,6 +9,11 @@ ARG PASS=yourpwd
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+ENV XDG_SESSION_DESKTOP=xubuntu
+ENV XDG_DATA_DIRS=/usr/share/xfce4:/usr/share/xubuntu:/usr/local/share:/usr/share:/var/lib/snapd/desktop:/usr/share
+ENV XDG_CONFIG_DIRS=/etc/xdg/xdg-xubuntu:/etc/xdg:/etc/xdg
+ENV UV_LINK_MODE=copy
+
 #### Installations ####
 
 # Setup some basic packages that are sometimes needed to get to other packages and useful
@@ -313,9 +318,17 @@ RUN if [ -f "home/$USER/login-script-more.sh" ]; then \
 COPY system-configuration/backgroun[d].png /usr/share/xfce4/backdrops/
 # The login script also sets the desktop background to the provided file or a default.
 
+# Launch firefox headlessly for 3 seconds to generate profiles and assets, then terminate it
+RUN firefox-esr --headless & sleep 3 && pkill firefox-esr
+
 # Add bookmarks to Thunar, the default file browser for XFCE4
 RUN mkdir -p /home/$USER/.config/gtk-3.0 && \
-	echo 'file:///mount/h DriveH' >> /home/$USER/.config/gtk-3.0/bookmarks
+	echo 'file:///mount/persist Persistant_Storage' >> /home/$USER/.config/gtk-3.0/bookmarks
+
+# Set user terminal starting directory and desktop shortcut
+RUN echo "cd /mount/persist" >> /home/$USER/.bashrc
+RUN ln -s /mount/persist /home/$USER/Desktop/ && \
+	mv /home/$USER/Desktop/persist /home/$USER/Desktop/Persistant_Storage
 
 # Recursively change directories to be owned by user and not root
 RUN chown -Rf $USER /home/$USER/.config
