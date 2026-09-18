@@ -28,8 +28,12 @@ if not exist "mine\dockerfile" (
 	) > "mine\dockerfile"
 )
 
-rem All setup, launch...
-docker compose build --build-arg USER=%USER% --build-arg PASS=%PASS%
+echo Building the base image...
+docker build -t ubuntu26-xfce4-nvm24-rdp ubuntu26-xfce4-nvm24-rdp --build-arg "USER=%USER%" --build-arg "PASS=%PASS%"
+if %ERRORLEVEL% neq 0 goto Done
+
+echo Building and launching 'mine'...
+docker compose build --build-arg "USER=%USER%" --build-arg "PASS=%PASS%" --progress plain
 if %ERRORLEVEL% neq 0 goto Done
 docker compose up
 docker compose down

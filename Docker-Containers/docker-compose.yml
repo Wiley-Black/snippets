@@ -1,5 +1,5 @@
 services:
-  ubuntu:    
+  mine:
     build: mine
     image: mine:latest
     
@@ -13,3 +13,9 @@ services:
     # Connect using Remote Desktop to localhost:3390.
     ports:
       - "3390:3389"
+
+    # To do interactive troubleshooting:
+    #   docker compose run --rm ubuntu bash
+    stdin_open: true # Equivalent to docker run -i
+    tty: true        # Equivalent to docker run -t
+    

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 # Setup a default non-root user.  You can add a set-login.bat script that run.bat will 
 # use to provide these.
@@ -112,8 +112,18 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
     fuse \
     xfonts-base \
     xterm \
-    gpg-agent && \
+    gpg-agent \	
+	at-spi2-core \
+	xfce4-power-manager \
+	xfce4-power-manager-plugins \
+	locales && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Configure locale
+RUN echo "en_US.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen && \
+	echo "locales locales/locales_to_be_generated multiselect en_US.UTF-8 UTF-8" | sudo debconf-set-selections && \
+	echo "locales locales/default_environment_locale select en_US.UTF-8" | sudo debconf-set-selections && \
+	sudo dpkg-reconfigure --frontend noninteractive locales
 
 # Install gnome-terminal
 RUN apt-get update && apt-get -y install --no-install-recommends \
@@ -317,6 +327,31 @@ RUN if [ -f "home/$USER/login-script-more.sh" ]; then \
 # including a wildcard in the COPY command source filename.
 COPY system-configuration/backgroun[d].png /usr/share/xfce4/backdrops/
 # The login script also sets the desktop background to the provided file or a default.
+RUN echo "[org.gnome.desktop.background]\n\
+picture-uri='file:///usr/share/xfce4/backgrounds/background.png'\n\
+picture-uri-dark='file:///usr/share/xfce4/backgrounds/background.png'\n" \
+	> /usr/share/glib-2.0/schemas/99_custom_wallpaper.gschema.override
+RUN glib-compile-schemas /usr/share/glib-2.0/schemas/
+RUN mkdir -p /home/$USER/.config/xfce4/xfconf/xfce-perchannel-xml/
+RUN echo '<?xml version="1.0" encoding="UTF-8"?>\n\
+<channel name="xfce4-desktop" version="1.0">\n\
+  <property name="backdrop" type="empty">\n\
+    <property name="screen0" type="empty">\n\
+      <property name="monitor0" type="empty">\n\
+        <property name="workspace0" type="empty">\n\
+          <property name="last-image" type="string" value="/usr/share/xfce4/backgrounds/background.png"/>\n\
+          <property name="image-style" type="int" value="5"/>\n\
+        </property>\n\
+      </property>\n\
+      <property name="monitorVirtual1" type="empty">\n\
+        <property name="workspace0" type="empty">\n\
+          <property name="last-image" type="string" value="/usr/share/xfce4/backgrounds/background.png"/>\n\
+          <property name="image-style" type="int" value="5"/>\n\
+        </property>\n\
+      </property>\n\
+    </property>\n\
+  </property>\n\
+</channel>' > /home/$USER/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
 
 # Launch firefox headlessly for 3 seconds to generate profiles and assets, then terminate it
 RUN firefox-esr --headless & sleep 3 && pkill firefox-esr
