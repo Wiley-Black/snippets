@@ -19,3 +19,6 @@ services:
     stdin_open: true # Equivalent to docker run -i
     tty: true        # Equivalent to docker run -t
     
+    # VS Code wants to sandbox and needs access to the host IPC and (I think) PID access
+    ipc: host # Enables sharing of the host's IPC namespace
+    pid: host # Shares the host's PID namespace, allowing container to see and interact with all processes

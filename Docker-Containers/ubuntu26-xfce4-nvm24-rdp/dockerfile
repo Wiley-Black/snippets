@@ -116,7 +116,8 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
 	at-spi2-core \
 	xfce4-power-manager \
 	xfce4-power-manager-plugins \
-	locales && \
+	locales \
+	fswatch && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
 
 # Configure locale
@@ -172,6 +173,19 @@ RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor 
 	sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list' && \
 	apt-get update && apt-get install -y --no-install-recommends code && \
 	apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*deb
+
+# Make the VS Code --no-sandbox command-line option permanent, since it doesn't play well inside a container
+RUN mkdir -p /etc/skel/.vscode
+RUN echo '{\n\	
+	"enable-crash-reporter": false, \n\
+	"disable-chromium-sandbox": true, \n\
+}' > /etc/skel/.vscode/argv.json
+# And since that doesn't seem to work...
+RUN mv /usr/bin/code /usr/bin/code-original
+RUN echo '#!/bin/sh\n\
+/usr/bin/code-original --no-sandbox "$@"\n\
+' > /usr/bin/code && \
+	chmod +x /usr/bin/code
 
 # Install JS Node
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | /bin/bash - && \
@@ -301,6 +315,8 @@ RUN echo "$USER:$PASS" | chpasswd
 
 # Allow $USER to be sudo to install any new packages
 RUN usermod -a -G sudo $USER
+RUN echo $USER ALL=\(ALL\) NOPASSWD:ALL > /etc/sudoers.d/$USER && \
+	chmod 0440 /etc/sudoers.d/$USER
 
 #### Install user-level packages ####
 
