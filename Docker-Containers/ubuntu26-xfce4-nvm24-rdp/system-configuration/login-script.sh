@@ -7,6 +7,11 @@ sleep 5
 # Use 'background.png' if it was copied in via the Dockerfile (if it existed).  Otherwise pick a provided one.
 if [ -f "/usr/share/xfce4/backdrops/background.png" ]; then
 	xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitorrdp0/workspace0/last-image --set /usr/share/xfce4/backdrops/background.png
+	xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitor0/workspace0/last-image --set /usr/share/xfce4/backdrops/background.png
+	xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitorVirtual1/workspace0/last-image --set /usr/share/xfce4/backdrops/background.png
+	xfconf-query -c xfce4-desktop -l | grep last-image | while read path; do 
+		xfconf-query -c xfce4-desktop -p $path --set /usr/share/xfce4/backdrops/background.png
+	done
 else 
 	xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitorrdp0/workspace0/last-image --set /usr/share/xfce4/backdrops/xubuntu-development.png
 fi
